@@ -1,0 +1,64 @@
+{
+  "pages": [
+    {
+      "path": "pages/home/index",
+      "style": {
+        "navigationStyle": "custom",
+        "backgroundColor": "#f0f0f0"
+      }
+    },
+    {
+      "path": "pages/generator/index",
+      "style": {
+        "navigationStyle": "custom",
+        "backgroundColor": "#f0f0f0"
+      }
+    },
+    {
+      "path": "pages/add-item/index",
+      "style": {
+        "navigationStyle": "custom",
+        "backgroundColor": "#f0f0f0"
+      }
+    },
+    {
+      "path": "pages/settings/index",
+      "style": {
+        "navigationStyle": "custom",
+        "backgroundColor": "#f0f0f0"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationStyle": "custom",
+    "navigationBarTextStyle": "black",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f0f0f0"
+  },
+  "tabBar": {
+    "color": "#666666",
+    "selectedColor": "#1a1a1a",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "主页",
+        "iconPath": "static/tabbar/home.png",
+        "selectedIconPath": "static/tabbar/home-active.png"
+      },
+      {
+        "pagePath": "pages/add-item/index",
+        "text": "添加条目",
+        "iconPath": "static/tabbar/add.png",
+        "selectedIconPath": "static/tabbar/add-active.png"
+      },
+      {
+        "pagePath": "pages/settings/index",
+        "text": "设置",
+        "iconPath": "static/tabbar/settings.png",
+        "selectedIconPath": "static/tabbar/settings-active.png"
+      }
+    ]
+  }
+}

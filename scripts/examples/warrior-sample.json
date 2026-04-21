@@ -1,0 +1,17 @@
+{
+  "name": "示例武将",
+  "skills": [
+    {
+      "skillName": "一技能名",
+      "description": "在此填写技能描述（游戏规则文本）。",
+      "skillOrder": 1,
+      "skillType": "normal"
+    },
+    {
+      "skillName": "二技能名",
+      "description": "二技能描述；序号 2 表示二技能。",
+      "skillOrder": 2,
+      "skillType": "locked"
+    }
+  ]
+}
