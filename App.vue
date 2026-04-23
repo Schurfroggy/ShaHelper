@@ -2,12 +2,31 @@
 import { onLaunch } from "@dcloudio/uni-app";
 import { initItemStore, seedPresetsIfNeeded } from "./utils/itemStore.js";
 
-function enterAndroidFullscreen() {
+/**
+ * Android：关闭全屏、同步状态栏样式。
+ * manifest 中 statusbar.immersed 须为字符串 "none"（布尔 false 会被忽略，仍可能沉浸式叠在内容上）。
+ */
+function applyAndroidStatusBarLayout() {
   try {
-    plus.navigator.setFullscreen(true);
+    if (typeof plus === "undefined" || !plus.navigator) return;
+    if (plus.navigator.setFullscreen) {
+      plus.navigator.setFullscreen(false);
+    }
+    if (plus.navigator.setStatusBarBackground) {
+      plus.navigator.setStatusBarBackground("#f0f0f0");
+    }
+    if (plus.navigator.setStatusBarStyle) {
+      plus.navigator.setStatusBarStyle("dark");
+    }
   } catch (e) {
     console.error(e);
   }
+}
+
+function scheduleAndroidStatusBarLayout() {
+  applyAndroidStatusBarLayout();
+  setTimeout(applyAndroidStatusBarLayout, 80);
+  setTimeout(applyAndroidStatusBarLayout, 280);
 }
 
 onLaunch(() => {
@@ -16,12 +35,11 @@ onLaunch(() => {
     .catch((e) => {
       uni.showToast({ title: e.message || "数据库初始化失败", icon: "none" });
     });
-  // Android：隐藏系统状态栏（时间、电量等），应用内容区占满屏幕
   // #ifdef APP-ANDROID
   if (typeof plus !== "undefined") {
-    enterAndroidFullscreen();
+    scheduleAndroidStatusBarLayout();
   } else if (typeof document !== "undefined") {
-    document.addEventListener("plusready", enterAndroidFullscreen, { once: true });
+    document.addEventListener("plusready", scheduleAndroidStatusBarLayout, { once: true });
   }
   // #endif
 });

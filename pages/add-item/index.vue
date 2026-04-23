@@ -1,5 +1,6 @@
 <template>
   <view class="page">
+    <PageBackBar @back="goBack" />
     <view class="section">
       <text class="label">条目标题</text>
       <input v-model="title" class="input" placeholder="例如：李傕-狼袭" maxlength="40" />
@@ -29,14 +30,17 @@
       </view>
     </view>
 
-    <button class="save-btn" :disabled="saving" @click="saveItem">
-      {{ saving ? "保存中..." : "保存条目" }}
-    </button>
+    <view class="save-btn-wrap">
+      <button type="button" class="save-btn" :disabled="saving" @click="saveItem">
+        {{ saving ? "保存中..." : "保存条目" }}
+      </button>
+    </view>
   </view>
 </template>
 
 <script setup>
 import { ref } from "vue";
+import PageBackBar from "@/components/PageBackBar.vue";
 import { COVER_USER } from "@/utils/coverResolve.js";
 import { createItem } from "@/utils/itemStore.js";
 
@@ -44,6 +48,10 @@ const title = ref("");
 const imageUri = ref("");
 const options = ref([""]);
 const saving = ref(false);
+
+function goBack() {
+  uni.switchTab({ url: "/pages/home/index" });
+}
 
 function addOption() {
   options.value.push("");
@@ -69,6 +77,28 @@ function chooseCover() {
   });
 }
 
+// #ifdef H5
+/** H5：临时路径刷新后失效，入库前转为 data URL */
+async function persistCoverPath(tempPath) {
+  const p = String(tempPath || "").trim();
+  if (!p) return "";
+  if (p.startsWith("data:")) return p;
+  try {
+    const res = await fetch(p);
+    const blob = await res.blob();
+    const dataUrl = await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result || ""));
+      fr.onerror = () => reject(fr.error);
+      fr.readAsDataURL(blob);
+    });
+    return dataUrl || p;
+  } catch {
+    return p;
+  }
+}
+// #endif
+// #ifndef H5
 async function persistCoverPath(tempPath) {
   const p = String(tempPath || "").trim();
   if (!p) return "";
@@ -85,6 +115,7 @@ async function persistCoverPath(tempPath) {
     return p;
   }
 }
+// #endif
 
 function getImageSize(src) {
   const s = String(src || "").trim();
@@ -156,8 +187,8 @@ async function saveItem() {
   padding-left: 24rpx;
   padding-right: 24rpx;
   padding-bottom: 140rpx;
-  padding-top: calc(constant(safe-area-inset-top) + 56rpx);
-  padding-top: calc(env(safe-area-inset-top) + 56rpx);
+  padding-top: constant(safe-area-inset-top);
+  padding-top: env(safe-area-inset-top);
 }
 
 .section {
@@ -230,21 +261,45 @@ async function saveItem() {
   padding: 8rpx 10rpx;
 }
 
-.save-btn {
+/* 固定高度容器，避免 H5 上 button 在 flex 列布局中被拉长成「整页可点」误触 saveItem */
+.save-btn-wrap {
   position: fixed;
   left: 24rpx;
   right: 24rpx;
+  bottom: calc(constant(safe-area-inset-bottom) + 20rpx);
   bottom: calc(env(safe-area-inset-bottom) + 20rpx);
   height: 88rpx;
+  box-sizing: border-box;
+  z-index: 10;
+}
+
+.save-btn {
+  width: 100%;
+  height: 100%;
   border: 0;
   border-radius: 999rpx;
   background: #111;
   color: #fff;
   font-size: 32rpx;
   font-weight: 600;
+  padding: 0;
+  line-height: 88rpx;
 }
 
 .save-btn[disabled] {
   opacity: 0.6;
 }
+
+/* H5：为底部 tabBar 抬高保存条；容器限高 88rpx，防止误触 */
+/* #ifdef H5 */
+.page {
+  padding-bottom: calc(constant(safe-area-inset-bottom) + 200rpx);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 200rpx);
+}
+
+.save-btn-wrap {
+  bottom: calc(constant(safe-area-inset-bottom) + 100rpx);
+  bottom: calc(env(safe-area-inset-bottom) + 100rpx);
+}
+/* #endif */
 </style>

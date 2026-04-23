@@ -15,8 +15,12 @@ import {
 } from "./coverResolve.js";
 import { buildCaoyingFujianOptions } from "./presetCaoyingFujian.js";
 
-const DB_NAME = "random_generator_db";
-const DB_PATH = "_doc/random_generator.db";
+// #ifdef H5
+import { ensureDbReady, execSql, selectSql } from "./itemStoreDbH5.js";
+// #endif
+// #ifndef H5
+import { ensureDbReady, execSql, selectSql } from "./itemStoreDbPlus.js";
+// #endif
 
 const TABLE_ITEMS = "generator_items";
 const TABLE_OPTIONS = "generator_options";
@@ -29,7 +33,6 @@ const KEY_COVER_MIGRATED = "cover_fields_migrated_v1";
 export const ALGO_ADAPTIVE = "adaptive";
 export const ALGO_UNIFORM = "uniform";
 
-let readyPromise = null;
 let initialized = false;
 
 function nowMs() {
@@ -43,6 +46,13 @@ function q(s) {
 function tryRemoveUserCoverFile(filePath) {
   const p = String(filePath || "").trim();
   if (!p) return;
+  if (p.startsWith("blob:")) {
+    try {
+      URL.revokeObjectURL(p);
+    } catch (_) {}
+    return;
+  }
+  if (p.startsWith("data:")) return;
   try {
     if (typeof uni !== "undefined" && uni.getFileSystemManager) {
       uni.getFileSystemManager().unlinkSync(p);
@@ -50,49 +60,6 @@ function tryRemoveUserCoverFile(filePath) {
   } catch (e) {
     /* 文件不存在或非本地路径时忽略 */
   }
-}
-
-function hasSqlite() {
-  return typeof plus !== "undefined" && !!plus.sqlite;
-}
-
-function ensureSqliteReady() {
-  if (readyPromise) return readyPromise;
-  readyPromise = new Promise((resolve, reject) => {
-    if (!hasSqlite()) {
-      reject(new Error("当前环境不支持 SQLite"));
-      return;
-    }
-    plus.sqlite.openDatabase({
-      name: DB_NAME,
-      path: DB_PATH,
-      success: resolve,
-      fail: (err) => reject(new Error(err?.message || "打开数据库失败")),
-    });
-  });
-  return readyPromise;
-}
-
-function execSql(sql) {
-  return new Promise((resolve, reject) => {
-    plus.sqlite.executeSql({
-      name: DB_NAME,
-      sql,
-      success: resolve,
-      fail: (err) => reject(new Error(err?.message || "执行 SQL 失败")),
-    });
-  });
-}
-
-function selectSql(sql) {
-  return new Promise((resolve, reject) => {
-    plus.sqlite.selectSql({
-      name: DB_NAME,
-      sql,
-      success: (data) => resolve(Array.isArray(data) ? data : []),
-      fail: (err) => reject(new Error(err?.message || "查询 SQL 失败")),
-    });
-  });
 }
 
 async function withTx(work) {
@@ -111,7 +78,7 @@ async function withTx(work) {
 
 export async function initItemStore() {
   if (initialized) return;
-  await ensureSqliteReady();
+  await ensureDbReady();
   await execSql(
     `CREATE TABLE IF NOT EXISTS ${TABLE_ITEMS} (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

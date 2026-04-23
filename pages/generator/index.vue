@@ -1,5 +1,6 @@
 <template>
   <view class="wrap">
+    <PageBackBar fixed @back="goBack" />
     <ShenJiangweiJiufaTianrenTemplate
       v-if="item && isShenJiangweiJiufa"
       :title="item.title"
@@ -78,6 +79,7 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
+import PageBackBar from "@/components/PageBackBar.vue";
 import ShenJiangweiJiufaTianrenTemplate from "@/components/ShenJiangweiJiufaTianrenTemplate.vue";
 import ZhangQiyingFaluZhenyiTemplate from "@/components/ZhangQiyingFaluZhenyiTemplate.vue";
 import JieZuoCiTemplate from "@/components/JieZuoCiTemplate.vue";
@@ -117,6 +119,19 @@ import {
 /** 神荀彧「定汉」技能说明（标题下提示） */
 const SHENXUNYU_DINGHAN_HINT =
   "1.当你成为未被记录的锦囊牌的目标时，你记录此牌名，然后取消之；\n2.回合开始时，你可以在已记录的牌名中增加或移出一种锦囊牌的牌名。";
+
+function goBack() {
+  const stack = getCurrentPages();
+  if (stack.length > 1) {
+    uni.navigateBack({
+      fail: () => {
+        uni.switchTab({ url: "/pages/home/index" });
+      },
+    });
+  } else {
+    uni.switchTab({ url: "/pages/home/index" });
+  }
+}
 
 const item = ref(null);
 const itemId = ref(0);

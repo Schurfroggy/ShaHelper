@@ -8,6 +8,18 @@
 
 当 `manifest.json` 中 `appid` 仍为占位（如 `__UNI__TESTAPP01`）时，与 DCloud 开发者中心绑定一致。若需上架或独立应用标识，请在 [DCloud 开发者中心](https://dev.dcloud.net.cn/) 创建应用后替换 `appid`。
 
+### Android 状态栏（避免叠在内容上）
+
+- `app-plus.statusbar`：**`immersed` 必须为字符串** `"none"` / `"suggestedDevice"` / `"supportedDevice"`；**不要写布尔值 `false`**，否则可能被忽略，仍按沉浸式绘制导致系统栏压在 WebView 上。
+- 当前仓库：`immersed: "none"`，`style` / `background` 与浅灰页面一致；并配置 `safearea.background`。
+- `App.vue`（`APP-ANDROID`）：`plusready` 后调用 `setFullscreen(false)`、`setStatusBarBackground`、`setStatusBarStyle`，并在短延迟后重复应用，减少窗口晚就绪导致的异常。
+- **修改 manifest 后须重新打 Android 包或自定义基座**，仅热重载不会更新安装包内原生配置。
+
+### H5 发行（路径与资源）
+
+- `manifest.json` → `h5.router.base` 与根目录 `vite.config.js` 的 `base` 当前为 `"./"`，便于静态托管在子目录；若部署在域名根路径且需绝对资源路径，可按环境改回 `/` 等并保持一致。
+- 生产构建产物目录：**`dist/build/h5/`**（以当前 uni-cli 为准）。
+
 ---
 
 ## 封面存储（方案 B）
@@ -17,10 +29,10 @@
 | 字段 | 预设（builtin） | 用户（user） |
 |------|------------------|--------------|
 | `generator_items.cover_source` | `builtin` | `user` |
-| `generator_items.cover_ref` | 预设 slug（与目录名一致） | `uni.saveFile` 等返回的本地路径 |
+| `generator_items.cover_ref` | 预设 slug（与目录名一致） | App：`uni.saveFile` 等返回的本地路径；**H5**：入库前转为 **data URL** 写入库 |
 | `generator_items.image_uri` | 旧版兼容，新数据一般留空 | 历史数据可能仍有值 |
 
-删除用户自建条目时，若 `cover_ref` 指向本地文件，会尝试 `unlink`（失败则忽略）。
+删除用户自建条目时：App 上对本地路径尝试 `getFileSystemManager().unlinkSync`；**H5** 上 `data:` 不删文件，`blob:` 会 `URL.revokeObjectURL`。
 
 ### 目录约定
 
@@ -68,15 +80,33 @@ npm run sync:presets
 
 ## npm 脚本
 
+本仓库 **源码在仓库根目录**（无默认的 `src/`），uni-cli 默认 `UNI_INPUT_DIR` 指向 `src` 会找不到 `manifest.json`。因此脚本中已使用 **`cross-env UNI_INPUT_DIR=.`**（需先 `npm install` 安装 devDependency）。
+
 | 命令 | 作用 |
 |------|------|
 | `npm run sync:presets` | `resource/presets` → `static/presets` |
-| `npm run dev:app` | 同步预设后启动 App 调试 |
-| `npm run dev:h5` | 同步预设后启动 H5 |
-| `npm run build:app` / `build:h5` | 生产构建 |
+| `npm run dev:app` | 同步预设后 `uni -p app`（`UNI_INPUT_DIR=.`） |
+| `npm run dev:h5` | 同步预设后 `uni` 默认 H5（`UNI_INPUT_DIR=.`） |
+| `npm run build:app` | 同步预设后 `uni build -p app` |
+| `npm run build:h5` | 同步预设后 `uni build -p h5` |
 | `npm run warrior:sql` | 从示例 JSON 生成插入武将的 SQL 并打印（见下） |
 | `npm run sgs:import` | 从 Markdown 等导入武将（见 `scripts/import-sgs-warriors-from-md.mjs`） |
 | `npm run sgs:bundle` | 构建内置 `sgsBundledWarriors.json`（见 `scripts/build-sgs-bundled-json.mjs`） |
+
+**依赖**：生产依赖含 **`sql.js`**（仅 H5 打包使用）；`cross-env` 为 devDependency。
+
+---
+
+## 多端存储与 `itemStore`
+
+| 端 | 实现文件 | 说明 |
+|----|----------|------|
+| App（5+） | `utils/itemStoreDbPlus.js` | `plus.sqlite`，库名 `random_generator_db`，路径 `_doc/random_generator.db` |
+| H5 | `utils/itemStoreDbH5.js` | `sql.js` WASM + IndexedDB（库名 `shahelper_itemstore`）整库 `export` 快照 debounce 写回 |
+
+`utils/itemStore.js` 通过条件编译 `#ifdef H5` / `#ifndef H5` 引用上述驱动；建表、迁移、`seedPresetsIfNeeded` 等逻辑共用。
+
+**H5 注意**：数据仅存当前浏览器；**无痕模式**等若禁用 IndexedDB，启动时会 Toast 提示。大库写回会有短暂开销，已在驱动内 debounce。
 
 ---
 
@@ -92,9 +122,9 @@ npm run sync:presets
 
 ---
 
-## `utils/sgsWarriorStore.js`（App 内）
+## `utils/sgsWarriorStore.js`（App / H5）
 
-依赖 `uni` / `plus.sqlite`，需在 `initItemStore()` 完成后使用。
+依赖 `withItemStoreDb`（即 `initItemStore()` 完成后同一套 SQL）。**App** 底层为 `plus.sqlite`；**H5** 底层为 sql.js，接口一致。
 
 | 函数 | 说明 |
 |------|------|
@@ -157,6 +187,7 @@ https://wiki.biligame.com/msgs/<武将名>
 
 ## 界面组件提示（查阅代码时）
 
+- **`PageBackBar`**：`pages/generator/index.vue` 使用 **`fixed`** 胶囊叠在内容左上（与模板内「重置」按钮同形：圆角 pill、`padding`/`font-size` 对齐）；`pages/add-item/index.vue` 使用内联样式；点击回主页或 `navigateBack`（见组件与页面内 `goBack`）。
 - **`CardGridTemplate`**：通过 props `labels`、`initialDisabledLabels`、`dividerAfterRows`、`pressLatch`、按下态颜色 `pressedGradientFrom` 等区分程昱 / 张让 / 神荀彧。
 - **`RandomGeneratorTemplate`**：通用随机；周群「命运签」、曹婴「伏间」人数等通过标题判断分支逻辑（见 `pages/generator/index.vue`）。
 - **`JieZuoCiTemplate`**：会话状态见 `utils/jieZuociSessionStore.js`（按 `itemId` 内存恢复，仅重置按钮清空）。

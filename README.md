@@ -27,20 +27,22 @@
 
 ## 技术栈与运行环境
 
-- **框架**：uni-app（Vue 3）+ Vite，主要目标为 **App（Android）**，同时可构建 H5。
-- **数据**：SQLite（`plus.sqlite`），数据库文件位于应用沙盒内（见下文「数据库」）。
+- **框架**：uni-app（Vue 3）+ Vite，主要目标为 **App（Android）**，同时可构建 **H5**。
+- **数据**：
+  - **App**：SQLite（`plus.sqlite`），库文件在应用沙盒内（见下文「数据库」）。
+  - **H5**：浏览器内 **sql.js**（SQLite WASM）+ **IndexedDB** 保存整库快照；业务 SQL 与 App 共用 `utils/itemStore.js`（平台驱动见 `utils/itemStoreDbH5.js` / `itemStoreDbPlus.js`）。
 - **语言**：页面与逻辑以 JavaScript / Vue 单文件组件为主，样式使用 SCSS。
 
 **本地运行（简要）**
 
 ```bash
 npm install
-npm run dev:app    # App 调试（脚本会先同步预设静态资源）
+npm run dev:app    # App 调试（先 sync:presets；需 UNI_INPUT_DIR=.，见 DEVELOPER.md）
 # 或
-npm run dev:h5
+npm run dev:h5     # H5 调试
 ```
 
-更完整的命令、封面资源流程、DCloud 应用标识与开发注意事项见 **[DEVELOPER.md](./DEVELOPER.md)**。
+更完整的命令、封面资源流程、H5/App 存储差异、DCloud 应用标识与开发注意事项见 **[DEVELOPER.md](./DEVELOPER.md)**。
 
 ---
 
@@ -48,7 +50,7 @@ npm run dev:h5
 
 ```
 App.vue
-  └─ onLaunch：初始化 SQLite、写入缺失的内置预设条目（seed）
+  └─ onLaunch：初始化条目库（App：plus.sqlite；H5：sql.js+IDB）、seed 预设；Android 上同步状态栏样式（见 DEVELOPER.md）
 
 pages/
   ├─ home/index      主页：条目列表
@@ -57,6 +59,7 @@ pages/
   └─ settings/index  全局设置
 
 components/
+  ├─ PageBackBar.vue               左上角「返回」（H5/无侧滑手势；生成器页 fixed、添加条目内联）
   ├─ RandomGeneratorTemplate.vue   通用随机 UI（选项、历史、部分武将特化逻辑）
   ├─ CardGridTemplate.vue         通用 3 列牌名网格（设伏、滔乱、定汉等复用）
   ├─ JieZuoCiTemplate.vue         界左慈：化身抽取 / 重铸 / 新生
@@ -64,7 +67,8 @@ components/
   └─ ZhangQiyingFaluZhenyiTemplate.vue     张琪瑛：四象按钮
 
 utils/
-  ├─ itemStore.js       条目、选项、历史、KV、建表与迁移
+  ├─ itemStore.js       条目、选项、历史、KV、建表与迁移（平台 SQL 由下方驱动提供）
+  ├─ itemStoreDbPlus.js / itemStoreDbH5.js  App：`plus.sqlite`；H5：sql.js + IndexedDB
   ├─ sgsWarriorStore.js 武将 / 技能 CRUD 与内置种子
   ├─ coverResolve.js    封面 builtin / user 解析
   ├─ preset*.js         各预设的常量（牌表、标题常量等）
@@ -77,7 +81,9 @@ utils/
 
 ## 数据库结构（概览）
 
-所有业务表在同一 SQLite 库 `**random_generator.db`**（运行时路径 `_doc/random_generator.db`）中维护。
+**App**：所有业务表在同一 SQLite 库 `**random_generator.db**`（运行时路径 `_doc/random_generator.db`）中维护。
+
+**H5**：表结构与 App 一致，由 sql.js 执行；持久化介质为 IndexedDB 中的整库二进制快照（非独立 `.db` 文件路径）。
 
 ### 随机条目域
 
