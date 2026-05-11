@@ -4,6 +4,7 @@ import {
   COVER_USER,
   PRESET_SLUG_CAOYING_FUJIAN,
   PRESET_SLUG_CHENGYU_SHEFU,
+  PRESET_SLUG_CHENDENG_ZHOUXUAN,
   PRESET_SLUG_ZHANGRANG_TAOLUAN,
   PRESET_SLUG_SHENXUNYU_DINGHAN,
   PRESET_SLUG_LIQUE_LANGXI,
@@ -12,6 +13,7 @@ import {
   PRESET_SLUG_JIEZUOCI_HUASHEN,
   PRESET_SLUG_SHENJIANGWEI_JIEFA_TIANREN,
   PRESET_SLUG_ZHANGQIYING_FALU_ZHENYI,
+  PRESET_SLUG_YANGBIAO_ZHAOHAN_YIZHENG,
 } from "./coverResolve.js";
 import { buildCaoyingFujianOptions } from "./presetCaoyingFujian.js";
 
@@ -318,6 +320,8 @@ export const ITEM_TITLE_ZHOUQUN_TIANSUAN = "周群-天算";
 export const ITEM_TITLE_CAOYING_FUJIAN = "曹婴-伏间";
 /** CardGridTemplate：程昱-设伏 */
 export const ITEM_TITLE_CHENGYU_SHEFU = "程昱-设伏";
+/** CardGridTemplate：陈登-周旋（上两行同设伏，第三行锦囊/装备） */
+export const ITEM_TITLE_CHENDENG_ZHOUXUAN = "陈登-周旋";
 /** CardGridTemplate：张让-滔乱 */
 export const ITEM_TITLE_ZHANGRANG_TAOLUAN = "张让-滔乱";
 /** CardGridTemplate：神荀彧-定汉 / 奇正相生 */
@@ -330,6 +334,8 @@ export const ITEM_TITLE_JIEZUOCI_HUASHEN = "界左慈-化身 / 新生";
 export const ITEM_TITLE_SHENJIANGWEI_JIEFA_TIANREN = "神姜维-九伐 / 天任";
 /** ZhangQiyingFaluZhenyiTemplate */
 export const ITEM_TITLE_ZHANGQIYING_FALU_ZHENYI = "张琪瑛-法箓 / 真仪";
+/** YangBiaoZhaohanYizhengTemplate */
+export const ITEM_TITLE_YANGBIAO_ZHAOHAN_YIZHENG = "杨彪-昭汉 / 义争";
 
 const PRESET_DEFINITIONS = [
   {
@@ -368,6 +374,11 @@ const PRESET_DEFINITIONS = [
     options: ["设伏标记"],
   },
   {
+    title: ITEM_TITLE_CHENDENG_ZHOUXUAN,
+    slug: PRESET_SLUG_CHENDENG_ZHOUXUAN,
+    options: ["周旋标记"],
+  },
+  {
     title: ITEM_TITLE_ZHANGRANG_TAOLUAN,
     slug: PRESET_SLUG_ZHANGRANG_TAOLUAN,
     options: ["滔乱标记"],
@@ -391,6 +402,11 @@ const PRESET_DEFINITIONS = [
     title: ITEM_TITLE_ZHANGQIYING_FALU_ZHENYI,
     slug: PRESET_SLUG_ZHANGQIYING_FALU_ZHENYI,
     options: ["法箓", "真仪"],
+  },
+  {
+    title: ITEM_TITLE_YANGBIAO_ZHAOHAN_YIZHENG,
+    slug: PRESET_SLUG_YANGBIAO_ZHAOHAN_YIZHENG,
+    options: ["昭汉", "义争"],
   },
 ];
 

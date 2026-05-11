@@ -8,11 +8,13 @@ export const PRESET_SLUG_XURONG_BAOLI = "xurong-baoli";
 export const PRESET_SLUG_ZHOUQUN_TIANSUAN = "zhouqun-tiansuan";
 export const PRESET_SLUG_CAOYING_FUJIAN = "caoying-fujian";
 export const PRESET_SLUG_CHENGYU_SHEFU = "chengyu-shefu";
+export const PRESET_SLUG_CHENDENG_ZHOUXUAN = "chengdeng-zhouxuan";
 export const PRESET_SLUG_ZHANGRANG_TAOLUAN = "zhangrang-taoluan";
 export const PRESET_SLUG_SHENXUNYU_DINGHAN = "shenxunyu-dinghan";
 export const PRESET_SLUG_JIEZUOCI_HUASHEN = "jiezuoci-huashen";
 export const PRESET_SLUG_SHENJIANGWEI_JIEFA_TIANREN = "shenjiangwei-jiufa-tianren";
 export const PRESET_SLUG_ZHANGQIYING_FALU_ZHENYI = "zhangqiying-falu-zhenyi";
+export const PRESET_SLUG_YANGBIAO_ZHAOHAN_YIZHENG = "yangbiao-zhaohan-yizheng";
 
 /** 所有预设封面统一像素比例（宽 × 高），用于首页瀑布流占位 */
 export const PRESET_COVER_WIDTH = 574;

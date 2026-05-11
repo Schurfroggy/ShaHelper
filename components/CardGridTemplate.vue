@@ -129,6 +129,11 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  /** 为 true：任意时刻至多一格为「已按下」；点新格时其余恢复未按下；再点当前已按下格可取消 */
+  exclusiveSinglePress: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(["reset"]);
@@ -261,6 +266,23 @@ function loadCells() {
       isPlaceholder,
     };
   });
+  normalizeExclusivePressedStates();
+}
+
+/** 互斥单选：持久化若出现多格按下，只保留最先一格 */
+function normalizeExclusivePressedStates() {
+  if (!props.exclusiveSinglePress) return;
+  let kept = -1;
+  for (let i = 0; i < cells.value.length; i += 1) {
+    const c = cells.value[i];
+    if (c.isPlaceholder) continue;
+    if (c.state !== "pressed") continue;
+    if (kept < 0) {
+      kept = i;
+    } else {
+      c.state = "idle";
+    }
+  }
 }
 
 function persist() {
@@ -277,7 +299,7 @@ onMounted(() => {
 });
 
 watch(
-  () => [props.itemId, props.labels, props.initialDisabledLabels],
+  () => [props.itemId, props.labels, props.initialDisabledLabels, props.exclusiveSinglePress],
   () => {
     loadCells();
   },
@@ -295,6 +317,24 @@ watch(
 function onCellTap(index) {
   const row = cells.value[index];
   if (!row || row.isPlaceholder || row.state === "disabled") return;
+
+  if (props.exclusiveSinglePress) {
+    if (row.state === "pressed") {
+      row.state = "idle";
+      persist();
+      return;
+    }
+    for (let i = 0; i < cells.value.length; i += 1) {
+      const c = cells.value[i];
+      if (c.isPlaceholder || c.state === "disabled") continue;
+      c.state = i === index ? "pressed" : "idle";
+    }
+    persist();
+    bgColor.value = randomPastel();
+    flashOnce();
+    return;
+  }
+
   if (row.state === "idle") {
     row.state = "pressed";
     persist();

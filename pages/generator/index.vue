@@ -1,8 +1,13 @@
 <template>
   <view class="wrap">
     <PageBackBar fixed @back="goBack" />
+    <YangBiaoZhaohanYizhengTemplate
+      v-if="item && isYangBiaoZhaohanYizheng"
+      :title="item.title"
+      :item-id="itemId"
+    />
     <ShenJiangweiJiufaTianrenTemplate
-      v-if="item && isShenJiangweiJiufa"
+      v-else-if="item && isShenJiangweiJiufa"
       :title="item.title"
       :item-id="itemId"
     />
@@ -29,6 +34,22 @@
       pressed-glow="rgba(18, 55, 100, 0.48)"
       reset-modal-title="重置设伏"
       reset-modal-content="将所有可用牌恢复为未按下，火杀 / 雷杀仍为不可用。是否继续？"
+    />
+    <CardGridTemplate
+      v-else-if="item && isChenDengZhouxuan"
+      :title="item.title"
+      :item-id="itemId"
+      :labels="CHENDENG_ZHOUXUAN_GRID_LABELS"
+      :initial-disabled-labels="CHENDENG_ZHOUXUAN_INIT_DISABLED_LABELS"
+      :divider-after-rows="0"
+      hint=""
+      :exclusive-single-press="true"
+      pressed-gradient-from="#153a62"
+      pressed-gradient-to="#0a2848"
+      pressed-text-color="#e8f1fc"
+      pressed-glow="rgba(18, 55, 100, 0.48)"
+      reset-modal-title="重置周旋"
+      reset-modal-content="将所有可用格恢复为未按下。是否继续？"
     />
     <CardGridTemplate
       v-else-if="item && isZhangrangTaoluan"
@@ -81,6 +102,7 @@
 import { computed, ref, watch } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import PageBackBar from "@/components/PageBackBar.vue";
+import YangBiaoZhaohanYizhengTemplate from "@/components/YangBiaoZhaohanYizhengTemplate.vue";
 import ShenJiangweiJiufaTianrenTemplate from "@/components/ShenJiangweiJiufaTianrenTemplate.vue";
 import ZhangQiyingFaluZhenyiTemplate from "@/components/ZhangQiyingFaluZhenyiTemplate.vue";
 import JieZuoCiTemplate from "@/components/JieZuoCiTemplate.vue";
@@ -90,6 +112,10 @@ import {
   SHEFU_GRID_LABELS,
   SHEFU_INIT_DISABLED_LABELS,
 } from "@/utils/presetChengyuShefu.js";
+import {
+  CHENDENG_ZHOUXUAN_GRID_LABELS,
+  CHENDENG_ZHOUXUAN_INIT_DISABLED_LABELS,
+} from "@/utils/presetChenDengZhouxuan.js";
 import { ZHANGRANG_TAOLUAN_GRID_LABELS } from "@/utils/presetZhangrangTaoluan.js";
 import { SHENXUNYU_DINGHAN_GRID_LABELS } from "@/utils/presetShenxunyuDinghan.js";
 import {
@@ -107,11 +133,13 @@ import {
   getRecentHistory,
   ITEM_TITLE_CAOYING_FUJIAN,
   ITEM_TITLE_CHENGYU_SHEFU,
+  ITEM_TITLE_CHENDENG_ZHOUXUAN,
   ITEM_TITLE_ZHANGRANG_TAOLUAN,
   ITEM_TITLE_SHENXUNYU_DINGHAN,
   ITEM_TITLE_SHENXUNYU_DINGHAN_LEGACY,
   ITEM_TITLE_JIEZUOCI_HUASHEN,
   ITEM_TITLE_SHENJIANGWEI_JIEFA_TIANREN,
+  ITEM_TITLE_YANGBIAO_ZHAOHAN_YIZHENG,
   ITEM_TITLE_ZHANGQIYING_FALU_ZHENYI,
   ITEM_TITLE_ZHOUQUN_TIANSUAN,
   normalizeWeightsForItem,
@@ -158,6 +186,10 @@ const isChengyuShefu = computed(
   () => String(item.value?.title ?? "").trim() === ITEM_TITLE_CHENGYU_SHEFU,
 );
 
+const isChenDengZhouxuan = computed(
+  () => String(item.value?.title ?? "").trim() === ITEM_TITLE_CHENDENG_ZHOUXUAN,
+);
+
 const isZhangrangTaoluan = computed(
   () => String(item.value?.title ?? "").trim() === ITEM_TITLE_ZHANGRANG_TAOLUAN,
 );
@@ -169,6 +201,10 @@ const isShenxunyuDinghan = computed(() => {
 
 const isJieZuoCi = computed(
   () => String(item.value?.title ?? "").trim() === ITEM_TITLE_JIEZUOCI_HUASHEN,
+);
+
+const isYangBiaoZhaohanYizheng = computed(
+  () => String(item.value?.title ?? "").trim() === ITEM_TITLE_YANGBIAO_ZHAOHAN_YIZHENG,
 );
 
 const isShenJiangweiJiufa = computed(
