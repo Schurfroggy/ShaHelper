@@ -4,7 +4,7 @@ import { SHEFU_GRID_LABELS } from "./presetChengyuShefu.js";
 const SHEFU_GRID_TAIL = SHEFU_GRID_LABELS.slice(6);
 
 /**
- * 神荀彧-定汉（3 列 × 6 行）：
+ * 神荀彧-定汉 / 奇正相生（3 列 × 6 行）：
  * - 上四行：与原程昱网格下方四行相同
  * - 下两行：兵粮寸断 / 乐不思蜀 / 奇正相生；「闪电」居中（两侧空占位）
  */

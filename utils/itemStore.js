@@ -30,10 +30,13 @@ const TABLE_APP_KV = "app_kv";
 export const KEY_RANDOM_ALGO = "random_algorithm";
 const KEY_WEIGHTS_MIGRATED = "weights_migrated_v1";
 const KEY_COVER_MIGRATED = "cover_fields_migrated_v1";
+const KEY_PRESET_SHENXUNYU_TITLE_V2 = "preset_title_shenxunyu_dinghan_v2";
 export const ALGO_ADAPTIVE = "adaptive";
 export const ALGO_UNIFORM = "uniform";
 
 let initialized = false;
+/** 冷启动 {@link initItemStore} 时批量读的 app_kv，供 {@link seedPresetsIfNeeded} 复用 */
+let startupKvCache = null;
 
 function nowMs() {
   return Date.now();
@@ -118,12 +121,43 @@ export async function initItemStore() {
       value TEXT NOT NULL
     )`,
   );
-  await ensureDefaultAppSettings();
-  await migrateCoverColumnsIfNeeded();
+  const startupKv = await readKvMap([
+    KEY_RANDOM_ALGO,
+    KEY_COVER_MIGRATED,
+    KEY_WEIGHTS_MIGRATED,
+    KEY_PRESET_SHENXUNYU_TITLE_V2,
+  ]);
+  startupKvCache = startupKv;
+  await ensureDefaultAppSettings(startupKv);
+  await migrateCoverColumnsIfNeeded(startupKv);
   await migrateCoverDimensionsIfNeeded();
-  await migrateOptionWeightsIfNeeded();
-  await ensureSgsWarriorSchema();
+  await migrateOptionWeightsIfNeeded(startupKv);
   initialized = true;
+}
+
+/** 一次查询读取多个 app_kv，减少冷启动往返 */
+async function readKvMap(keys) {
+  const uniq = [...new Set(keys)].filter(Boolean);
+  if (!uniq.length) return new Map();
+  const inClause = uniq.map((k) => `'${q(k)}'`).join(",");
+  const rows = await selectSql(
+    `SELECT key, value FROM ${TABLE_APP_KV} WHERE key IN (${inClause})`,
+  );
+  const m = new Map();
+  for (const r of rows) {
+    const k = String(r.key ?? r.KEY ?? "");
+    if (k) m.set(k, String(r.value ?? r.VALUE ?? ""));
+  }
+  return m;
+}
+
+let sgsWarriorSchemaReady = false;
+
+/** 武将库表；推迟到首次 {@link withItemStoreDb} 再建，加快首屏 init */
+async function ensureSgsWarriorSchemaLazily() {
+  if (sgsWarriorSchemaReady) return;
+  await ensureSgsWarriorSchema();
+  sgsWarriorSchemaReady = true;
 }
 
 /** 武将库：与随机条目无关的独立业务表 */
@@ -165,12 +199,11 @@ async function migrateSgsSkillTypeSlugColumnIfNeeded() {
 }
 
 /**
- * 供武将库等扩展模块在同一 SQLite 库上执行语句（依赖 {@link initItemStore} 已完成建表）。
- * @param {(api: { execSql: typeof execSql; selectSql: typeof selectSql; withTx: typeof withTx; q: typeof q }) => Promise<T>} work
- * @returns {Promise<T>}
+ * 供武将库等扩展在同一 SQLite 上执行语句（会先 {@link initItemStore} 并懒建武将表）。
  */
 export async function withItemStoreDb(work) {
   await initItemStore();
+  await ensureSgsWarriorSchemaLazily();
   return work({ execSql, selectSql, withTx, q });
 }
 
@@ -187,77 +220,70 @@ async function migrateCoverDimensionsIfNeeded() {
   }
 }
 
-async function migrateCoverColumnsIfNeeded() {
+async function migrateCoverColumnsIfNeeded(kv) {
   try {
     await execSql(`ALTER TABLE ${TABLE_ITEMS} ADD COLUMN cover_source TEXT`);
-  } catch (e) {
-    /* column exists */
+  } catch {
+    /* exists */
   }
   try {
     await execSql(`ALTER TABLE ${TABLE_ITEMS} ADD COLUMN cover_ref TEXT`);
-  } catch (e) {
-    /* column exists */
+  } catch {
+    /* exists */
   }
-
-  const flag = await selectSql(
-    `SELECT value FROM ${TABLE_APP_KV} WHERE key='${q(KEY_COVER_MIGRATED)}' LIMIT 1`,
+  if (kv.get(KEY_COVER_MIGRATED) === "1") return;
+  await execSql(
+    `UPDATE ${TABLE_ITEMS}
+     SET cover_source='${q(COVER_BUILTIN)}',
+         cover_ref='${q(PRESET_SLUG_LIQUE_LANGXI)}'
+     WHERE is_preset=1 AND title='${q("李傕-狼袭")}'
+       AND (cover_source IS NULL OR cover_source='')`,
   );
-  if (!flag.length) {
-    await execSql(
-      `UPDATE ${TABLE_ITEMS}
-       SET cover_source='${q(COVER_BUILTIN)}',
-           cover_ref='${q(PRESET_SLUG_LIQUE_LANGXI)}'
-       WHERE is_preset=1 AND title='${q("李傕-狼袭")}'
-         AND (cover_source IS NULL OR cover_source='')`,
-    );
-    await execSql(
-      `UPDATE ${TABLE_ITEMS}
-       SET cover_source='${q(COVER_USER)}',
-           cover_ref=image_uri
-       WHERE is_preset=0
-         AND IFNULL(image_uri,'')<>''
-         AND (cover_source IS NULL OR cover_source='')`,
-    );
-    await execSql(
-      `UPDATE ${TABLE_ITEMS}
-       SET cover_source='',
-           cover_ref=''
-       WHERE cover_source IS NULL`,
-    );
-    await execSql(
-      `INSERT OR REPLACE INTO ${TABLE_APP_KV} (key, value) VALUES ('${q(KEY_COVER_MIGRATED)}','1')`,
-    );
-  }
+  await execSql(
+    `UPDATE ${TABLE_ITEMS}
+     SET cover_source='${q(COVER_USER)}',
+         cover_ref=image_uri
+     WHERE is_preset=0
+       AND IFNULL(image_uri,'')<>''
+       AND (cover_source IS NULL OR cover_source='')`,
+  );
+  await execSql(
+    `UPDATE ${TABLE_ITEMS}
+     SET cover_source='',
+         cover_ref=''
+     WHERE cover_source IS NULL`,
+  );
+  await execSql(
+    `INSERT OR REPLACE INTO ${TABLE_APP_KV} (key, value) VALUES ('${q(KEY_COVER_MIGRATED)}','1')`,
+  );
+  kv.set(KEY_COVER_MIGRATED, "1");
 }
 
-async function ensureDefaultAppSettings() {
-  const rows = await selectSql(`SELECT value FROM ${TABLE_APP_KV} WHERE key='${q(KEY_RANDOM_ALGO)}' LIMIT 1`);
-  if (!rows.length) {
-    await execSql(
-      `INSERT OR REPLACE INTO ${TABLE_APP_KV} (key, value) VALUES ('${q(KEY_RANDOM_ALGO)}', '${q(
-        ALGO_ADAPTIVE,
-      )}')`,
-    );
-  }
+async function ensureDefaultAppSettings(kv) {
+  if (kv.has(KEY_RANDOM_ALGO)) return;
+  await execSql(
+    `INSERT OR REPLACE INTO ${TABLE_APP_KV} (key, value) VALUES ('${q(KEY_RANDOM_ALGO)}', '${q(
+      ALGO_ADAPTIVE,
+    )}')`,
+  );
+  kv.set(KEY_RANDOM_ALGO, ALGO_ADAPTIVE);
 }
 
-async function migrateOptionWeightsIfNeeded() {
+async function migrateOptionWeightsIfNeeded(kv) {
   let added = false;
   try {
     await execSql(`ALTER TABLE ${TABLE_OPTIONS} ADD COLUMN weight REAL`);
     added = true;
-  } catch (e) {
+  } catch {
     added = false;
   }
-  const flag = await selectSql(
-    `SELECT value FROM ${TABLE_APP_KV} WHERE key='${q(KEY_WEIGHTS_MIGRATED)}' LIMIT 1`,
+  const weightsDone = kv.get(KEY_WEIGHTS_MIGRATED) === "1";
+  if (weightsDone && !added) return;
+  await normalizeWeightsAllItemsInternal();
+  await execSql(
+    `INSERT OR REPLACE INTO ${TABLE_APP_KV} (key, value) VALUES ('${q(KEY_WEIGHTS_MIGRATED)}','1')`,
   );
-  if (!flag.length || added) {
-    await normalizeWeightsAllItemsInternal();
-    await execSql(
-      `INSERT OR REPLACE INTO ${TABLE_APP_KV} (key, value) VALUES ('${q(KEY_WEIGHTS_MIGRATED)}','1')`,
-    );
-  }
+  kv.set(KEY_WEIGHTS_MIGRATED, "1");
 }
 
 async function normalizeWeightsAllItemsInternal() {
@@ -286,28 +312,23 @@ async function normalizeWeightsForItemTx(itemId) {
   }
 }
 
-/** 与此标题匹配的条目启用「命运签」：可选将某一签复制一次参与本次随机，抽毕清除 */
+/** 与此标题匹配的条目启用「命运签」 */
 export const ITEM_TITLE_ZHOUQUN_TIANSUAN = "周群-天算";
-
-/** 与此标题匹配的条目需先选总人数 n，再按规则生成选项（曹婴-伏间） */
+/** 与此标题匹配的条目需先选总人数 n（曹婴-伏间） */
 export const ITEM_TITLE_CAOYING_FUJIAN = "曹婴-伏间";
-
-/** 与此标题匹配的条目使用 CardGridTemplate（程昱-设伏） */
+/** CardGridTemplate：程昱-设伏 */
 export const ITEM_TITLE_CHENGYU_SHEFU = "程昱-设伏";
-
-/** 与此标题匹配的条目使用 CardGridTemplate（张让-滔乱，按下锁定直至重置） */
+/** CardGridTemplate：张让-滔乱 */
 export const ITEM_TITLE_ZHANGRANG_TAOLUAN = "张让-滔乱";
-
-/** 与此标题匹配的条目使用 CardGridTemplate（神荀彧-定汉，基本牌格不可用 + 锦囊布局） */
-export const ITEM_TITLE_SHENXUNYU_DINGHAN = "神荀彧-定汉";
-
-/** 与此标题匹配的条目使用 JieZuoCiTemplate（界左慈-化身 / 新生） */
+/** CardGridTemplate：神荀彧-定汉 / 奇正相生 */
+export const ITEM_TITLE_SHENXUNYU_DINGHAN = "神荀彧-定汉 / 奇正相生";
+/** 兼容库内旧标题 */
+export const ITEM_TITLE_SHENXUNYU_DINGHAN_LEGACY = "神荀彧-定汉";
+/** JieZuoCiTemplate：界左慈 */
 export const ITEM_TITLE_JIEZUOCI_HUASHEN = "界左慈-化身 / 新生";
-
-/** 与此标题匹配的条目使用 ShenJiangweiJiufaTianrenTemplate（神姜维-九伐 / 天任） */
+/** ShenJiangweiJiufaTianrenTemplate */
 export const ITEM_TITLE_SHENJIANGWEI_JIEFA_TIANREN = "神姜维-九伐 / 天任";
-
-/** 与此标题匹配的条目使用 ZhangQiyingFaluZhenyiTemplate（张琪瑛-法箓 / 真仪） */
+/** ZhangQiyingFaluZhenyiTemplate */
 export const ITEM_TITLE_ZHANGQIYING_FALU_ZHENYI = "张琪瑛-法箓 / 真仪";
 
 const PRESET_DEFINITIONS = [
@@ -373,8 +394,48 @@ const PRESET_DEFINITIONS = [
   },
 ];
 
+/** 旧标题改名 + 按 cover_ref 去重（曾出现双预设）；`kv` 来自冷启动批量读 app_kv */
+async function repairShenxunyuDinghanPresetsForSeed(kv) {
+  if (kv.get(KEY_PRESET_SHENXUNYU_TITLE_V2) !== "1") {
+    await execSql(
+      `UPDATE ${TABLE_ITEMS}
+       SET title='${q(ITEM_TITLE_SHENXUNYU_DINGHAN)}', updated_at=${nowMs()}
+       WHERE is_preset=1 AND title='${q(ITEM_TITLE_SHENXUNYU_DINGHAN_LEGACY)}'`,
+    );
+    await execSql(
+      `INSERT OR REPLACE INTO ${TABLE_APP_KV} (key, value) VALUES ('${q(KEY_PRESET_SHENXUNYU_TITLE_V2)}','1')`,
+    );
+    kv.set(KEY_PRESET_SHENXUNYU_TITLE_V2, "1");
+  }
+  const rows = await selectSql(
+    `SELECT id FROM ${TABLE_ITEMS}
+     WHERE is_preset=1 AND cover_ref='${q(PRESET_SLUG_SHENXUNYU_DINGHAN)}'
+     ORDER BY id ASC`,
+  );
+  if (rows.length <= 1) return;
+  const keepId = Number(rows[0]?.id ?? rows[0]?.ID ?? 0);
+  if (!keepId) return;
+  await withTx(async () => {
+    for (let i = 1; i < rows.length; i += 1) {
+      const rid = Number(rows[i]?.id ?? rows[i]?.ID ?? 0);
+      if (!rid || rid === keepId) continue;
+      await execSql(`DELETE FROM ${TABLE_HISTORY} WHERE item_id=${rid}`);
+      await execSql(`DELETE FROM ${TABLE_OPTIONS} WHERE item_id=${rid}`);
+      await execSql(`DELETE FROM ${TABLE_ITEMS} WHERE id=${rid} AND is_preset=1`);
+    }
+    await execSql(
+      `UPDATE ${TABLE_ITEMS}
+       SET title='${q(ITEM_TITLE_SHENXUNYU_DINGHAN)}', updated_at=${nowMs()}
+       WHERE id=${keepId} AND is_preset=1`,
+    );
+  });
+}
+
 export async function seedPresetsIfNeeded() {
   await initItemStore();
+  await repairShenxunyuDinghanPresetsForSeed(
+    startupKvCache ?? (await readKvMap([KEY_PRESET_SHENXUNYU_TITLE_V2])),
+  );
   for (const def of PRESET_DEFINITIONS) {
     const rows = await selectSql(
       `SELECT id FROM ${TABLE_ITEMS} WHERE title='${q(def.title)}' AND is_preset=1 LIMIT 1`,
@@ -621,7 +682,7 @@ export async function adjustAdaptiveWeightsAfterPick(itemId, optionId) {
   );
   if (opts.length < 2) return;
 
-  let weights = opts.map((o) => Number(o.weight ?? o.weight));
+  let weights = opts.map((o) => Number(o.weight ?? o.WEIGHT));
   if (weights.some((w) => !Number.isFinite(w) || w <= 0)) {
     const n = opts.length;
     weights = opts.map(() => 1 / n);

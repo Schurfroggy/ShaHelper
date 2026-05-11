@@ -50,6 +50,7 @@
       :initial-disabled-labels="[]"
       :divider-after-rows="0"
       :hint="SHENXUNYU_DINGHAN_HINT"
+      :show-qizheng-fab="true"
       pressed-gradient-from="#9a7f12"
       pressed-gradient-to="#5c4d08"
       pressed-text-color="#fff9e6"
@@ -108,6 +109,7 @@ import {
   ITEM_TITLE_CHENGYU_SHEFU,
   ITEM_TITLE_ZHANGRANG_TAOLUAN,
   ITEM_TITLE_SHENXUNYU_DINGHAN,
+  ITEM_TITLE_SHENXUNYU_DINGHAN_LEGACY,
   ITEM_TITLE_JIEZUOCI_HUASHEN,
   ITEM_TITLE_SHENJIANGWEI_JIEFA_TIANREN,
   ITEM_TITLE_ZHANGQIYING_FALU_ZHENYI,
@@ -160,9 +162,10 @@ const isZhangrangTaoluan = computed(
   () => String(item.value?.title ?? "").trim() === ITEM_TITLE_ZHANGRANG_TAOLUAN,
 );
 
-const isShenxunyuDinghan = computed(
-  () => String(item.value?.title ?? "").trim() === ITEM_TITLE_SHENXUNYU_DINGHAN,
-);
+const isShenxunyuDinghan = computed(() => {
+  const t = String(item.value?.title ?? "").trim();
+  return t === ITEM_TITLE_SHENXUNYU_DINGHAN || t === ITEM_TITLE_SHENXUNYU_DINGHAN_LEGACY;
+});
 
 const isJieZuoCi = computed(
   () => String(item.value?.title ?? "").trim() === ITEM_TITLE_JIEZUOCI_HUASHEN,

@@ -61,7 +61,7 @@ npm run sync:presets
 | `caoying-fujian` | 曹婴-伏间 |
 | `chengyu-shefu` | 程昱-设伏 |
 | `zhangrang-taoluan` | 张让-滔乱 |
-| `shenxunyu-dinghan` | 神荀彧-定汉 |
+| `shenxunyu-dinghan` | 神荀彧-定汉 / 奇正相生 |
 | `jiezuoci-huashen` | 界左慈-化身 / 新生 |
 | `shenjiangwei-jiufa-tianren` | 神姜维-九伐 / 天任 |
 | `zhangqiying-falu-zhenyi` | 张琪瑛-法箓 / 真仪 |

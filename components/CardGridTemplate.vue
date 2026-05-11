@@ -19,6 +19,43 @@
           </view>
         </template>
       </view>
+
+      <view v-if="showQizhengFab" class="qizheng-fab-wrap">
+        <view class="qizheng-fab" :style="pressedThemeVars" @click="openQizhengModal">
+          <text class="qizheng-fab__text">奇正相生</text>
+        </view>
+      </view>
+    </view>
+
+    <view v-if="qizhengModalOpen" class="qizheng-mask" @click="closeQizhengModal">
+      <view class="qizheng-dialog" :style="pressedThemeVars" @click.stop>
+        <view class="qizheng-type-row">
+          <view
+            class="qizheng-type-btn"
+            :class="{ 'qizheng-type-btn--on': qizhengMode === 'zheng' }"
+            @click="setQizhengMode('zheng')"
+          >
+            <text class="qizheng-type-btn__text">选择正兵</text>
+          </view>
+          <view
+            class="qizheng-type-btn"
+            :class="{ 'qizheng-type-btn--on': qizhengMode === 'qi' }"
+            @click="setQizhengMode('qi')"
+          >
+            <text class="qizheng-type-btn__text">选择奇兵</text>
+          </view>
+        </view>
+        <view class="qizheng-body">
+          <view v-if="qizhengMode === 'zheng'" class="qizheng-cols">
+            <text class="qizheng-col-text">{{ qizhengZhengLeft }}</text>
+            <text class="qizheng-col-text">{{ qizhengZhengRight }}</text>
+          </view>
+          <view v-else-if="qizhengMode === 'qi'" class="qizheng-cols">
+            <text class="qizheng-col-text">{{ qizhengQiLeft }}</text>
+            <text class="qizheng-col-text">{{ qizhengQiRight }}</text>
+          </view>
+        </view>
+      </view>
     </view>
   </view>
 </template>
@@ -87,9 +124,35 @@ const props = defineProps({
     type: String,
     default: "",
   },
+  /** 神荀彧页：底部「奇正相生」圆形入口与说明弹层 */
+  showQizhengFab: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(["reset"]);
+
+const qizhengModalOpen = ref(false);
+const qizhengMode = ref(null);
+
+const qizhengZhengLeft = "目标未打出【闪】\n 获得其一张牌";
+const qizhengZhengRight = "目标打出【闪】\n 无事发生";
+const qizhengQiLeft = "目标未打出【杀】\n 你对其造成一点伤害";
+const qizhengQiRight = "目标打出【杀】\n 无事发生";
+
+function openQizhengModal() {
+  qizhengMode.value = null;
+  qizhengModalOpen.value = true;
+}
+
+function closeQizhengModal() {
+  qizhengModalOpen.value = false;
+}
+
+function setQizhengMode(mode) {
+  qizhengMode.value = mode;
+}
 
 /** 与历史默认一致：深绿按下 */
 const DEFAULT_PRESS_FROM = "#1d6b4a";
@@ -413,5 +476,126 @@ function onResetTap() {
   opacity: 0;
   pointer-events: none;
   min-height: 88rpx;
+}
+
+.qizheng-fab-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 88rpx;
+  padding-bottom: 48rpx;
+}
+
+.qizheng-fab {
+  width: 200rpx;
+  height: 200rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    145deg,
+    var(--cg-press-from) 0%,
+    var(--cg-press-to) 100%
+  );
+  box-shadow: 0 12rpx 28rpx var(--cg-press-glow);
+  border: 2rpx solid rgba(255, 255, 255, 0.22);
+}
+
+.qizheng-fab__text {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: var(--cg-press-text);
+  text-align: center;
+  line-height: 1.3;
+  padding: 0 20rpx;
+}
+
+.qizheng-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx 32rpx;
+  padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+.qizheng-dialog {
+  width: 100%;
+  max-width: 640rpx;
+  background: #f6f6f6;
+  border-radius: 20rpx;
+  padding: 28rpx 22rpx 24rpx;
+  box-shadow: 0 16rpx 48rpx rgba(0, 0, 0, 0.22);
+}
+
+.qizheng-type-row {
+  display: flex;
+  gap: 16rpx;
+}
+
+.qizheng-type-btn {
+  flex: 1;
+  min-height: 76rpx;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 2rpx solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.06);
+}
+
+.qizheng-type-btn__text {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.qizheng-type-btn--on {
+  background: linear-gradient(
+    145deg,
+    var(--cg-press-from) 0%,
+    var(--cg-press-to) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow:
+    inset 0 2rpx 8rpx rgba(0, 0, 0, 0.22),
+    0 6rpx 14rpx var(--cg-press-glow);
+}
+
+.qizheng-type-btn--on .qizheng-type-btn__text {
+  color: var(--cg-press-text);
+}
+
+.qizheng-body {
+  margin-top: 22rpx;
+  min-height: 200rpx;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 14rpx;
+  border: 2rpx solid rgba(0, 0, 0, 0.08);
+  padding: 22rpx 16rpx;
+  box-sizing: border-box;
+}
+
+.qizheng-cols {
+  display: flex;
+  gap: 18rpx;
+  align-items: flex-start;
+}
+
+.qizheng-col-text {
+  flex: 1;
+  font-size: 24rpx;
+  line-height: 1.45;
+  color: #222;
+  white-space: pre-line;
+  text-align: center;
 }
 </style>
