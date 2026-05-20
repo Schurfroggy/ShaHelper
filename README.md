@@ -21,7 +21,7 @@
 | **张琪瑛-法箓 / 真仪** | 四个标记记录                  |
 
 
-另：**添加条目**可自建其它随机项并上传封面；**设置**里可切换随机方式。抽取历史、权重与武将库表结构等实现细节见 **[DEVELOPER.md](./DEVELOPER.md)**。
+另：**添加条目**可自建其它随机项并上传封面；**牌名标注**为牌名相关辅助（功能扩展中）；**设置**里可切换随机方式。抽取历史、权重与武将库表结构等实现细节见 **[DEVELOPER.md](./DEVELOPER.md)**。
 
 ---
 
@@ -56,6 +56,7 @@ pages/
   ├─ home/index      主页：条目列表
   ├─ generator/index 功能页：按 item.title 分支挂载不同模板组件
   ├─ add-item/index  新建条目
+  ├─ card-label/index  牌名标注（Tab，功能扩展中）
   └─ settings/index  全局设置
 
 components/
